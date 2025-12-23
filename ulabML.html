@@ -78,13 +78,20 @@
 </p>
 
 <p>
-    All functions:
+    ulabML functions:
 </p>
 <ul>
-    <li>Almost all functions require a <code>ndarray</code> as their first argument</li>
-    <li>Almost all functions return a new <code>ndarray</code></li>
+    <li>Never modify ndarray inputs inplace</li>
+    <li>Require a <code>ndarray</code> as the first argument for almost all functions</li>
+    <li>Return a <code>ndarray</code> for almost all functions</li>
     <li>Do <strong>not</strong> accept keyword arguments</li>
     <li>Only work with arrays that are a maximum of 3 dimensions (for now)</li>
+    <li>Verify datatypes and dimensionality of arguments as preconditions for user convenience; however, no shape/length checks are performed as of now,
+        so if array shapes/lengths are incompatible, unexpected behavior may occur i.e. Indexing Out of Bounds.
+        <ul><li>For example, conv1d checks that all inputs are ndarrays and that x and kernel have 3-dims while bias has 1-dim. However, it
+            doesn't verify that the Cin dimension of x matches that of kernel, or that the Cout dimension of kernel matches the length of bias.
+        </li></ul>
+    </li>
 </ul>
 
 <h2>Function Overview</h2>
