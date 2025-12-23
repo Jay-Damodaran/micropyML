@@ -52,7 +52,7 @@ mp_obj_t relu(const mp_obj_t x){
 }
 MP_DEFINE_CONST_FUN_OBJ_1(relu_obj, relu);
 
-// 2^(x - max + 22) / sum(2^(x_i - max + 22))
+// 2^(x_i - max + 22) / sum(2^(x - max + 22))
 // Outputs are Q7.7 on interval [0, 100]
 #define MAXEXP 22
 #define QUANTBITS 14
@@ -103,7 +103,7 @@ mp_obj_t softmax(const mp_obj_t x){
     ndarray_obj_t *prob_vec = ndarray_new_dense_ndarray(x_pt->ndim, x_pt->shape, NDARRAY_UINT16);
     uint32_t exp_sum = 0;
     mp_obj_t argmax[x_pt->shape[1]];
-    uint16_t *prob_arr = (uint16_t *)prob_vec->array; // holds 12-bit fixed pt prob vals (7 int bits and 5 frac bits)
+    uint16_t *prob_arr = (uint16_t *)prob_vec->array; // holds 14-bit fixed pt prob vals (7 int bits and 7 frac bits)
     int16_t offset = INT16_MIN;
     switch(x_pt->dtype) {
         case NDARRAY_UINT8: {
@@ -132,7 +132,7 @@ mp_obj_t confidence(mp_obj_t x) {
         mp_raise_TypeError(MP_ERROR_TEXT("Expected integer kernel size"));
     uint16_t quantized_conf = mp_obj_get_int(x);
     uint8_t intbits = quantized_conf >> FRACBITS;
-    uint8_t floatbits = ((quantized_conf & 0x7F) * 100 + (1<<(FRACBITS-1))) >> FRACBITS; // +16 rounds to nearest hundredths
+    uint8_t floatbits = ((quantized_conf & 0x7F) * 100 + (1<<(FRACBITS-1))) >> FRACBITS; // +64 rounds to nearest hundredths
     mp_obj_t return_vals[2] = {MP_OBJ_NEW_SMALL_INT(intbits), MP_OBJ_NEW_SMALL_INT(floatbits)};
     return mp_obj_new_tuple(2, return_vals);
 }

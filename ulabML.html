@@ -15,6 +15,11 @@
         h1, h2 {
             color: #003366;
         }
+        .section-divider {
+            border: none;
+            border-top: 5px solid #ddd;
+            margin: 2rem 0 1.5rem 0;  /* space above / below */
+        }
         code {
             background: #f5f5f5;
             padding: 2px 6px;
@@ -47,11 +52,16 @@
             font-size: 1.2em;
         }
         a {
-            text-decoration: none;
+            text-decoration: none;   /* remove underline from anchor */
             color: #003366;
         }
-        a:hover {
-            text-decoration: underline;
+
+        a code {
+            text-decoration: underline;   /* underline only function name */
+        }
+
+        a:hover code {
+            font-weight: bold;            /* optional: bold on hover */
         }
         .func-list {
             margin-left: 1.5rem;
@@ -71,8 +81,8 @@
     All functions:
 </p>
 <ul>
-    <li>Require a <code>ndarray</code> as their first argument</li>
-    <li>Never modify ndarrays inplace</code></li>
+    <li>Almost all functions require a <code>ndarray</code> as their first argument</li>
+    <li>Almost all functions return a new <code>ndarray</code></li>
     <li>Do <strong>not</strong> accept keyword arguments</li>
     <li>Only work with arrays that are a maximum of 3 dimensions (for now)</li>
 </ul>
@@ -102,7 +112,7 @@
         Apply dropout regularization.
     </p>
     <p>
-        <a href="#maxpool1d"><code>maxpool1d(x, kernel_size=2)</code></a><br>
+        <a href="#maxpool1d"><code>maxpool1d(x, k=2)</code></a><br>
         1D max pooling over a 3D input tensor.
     </p>
     <p>
@@ -111,7 +121,7 @@
     </p>
     <p>
         <a href="#qconvrelu1d"><code>qconvrelu1d(x, kernel, bias=<b>0</b>, quant_params=(1, 0, 0))</code></a><br>
-        Quantized 1D convolution followed by ReLU.
+        Quantized 1D convolution with ReLU activation fused in.
     </p>
 </div>
 
@@ -120,7 +130,7 @@
 <div class="category">Activations</div>
 
 <div class="function" id="relu">
-    <h4>Relu</h4>
+    <h3>Relu</h3>
     <div class="signature">ulabML.relu(x)</div>
 
     <p>Apply the ReLU (Rectified Linear Unit) activation function element-wise.</p>
@@ -145,18 +155,19 @@
 
     <div class="section-title">Parameters</div>
     <ul>
-        <li><code>x</code> (<code>ndarray</code>): Integer input array.
-            Assumes <code>max(x) ≤ INT_MAX</code>.</li>
+        <li><code>x</code> (<code>ndarray</code>): array of shape (B, N) with dtype 8- or 16-bit uint/int.
+            Only guaranteed to be safe from overflow if N < 1024.</li>
     </ul>
 
     <div class="section-title">Returns</div>
     <ul>
-        <li><code>ndarray</code>: Fixed-point output array with dtype <code>uint16</code>.</li>
+        <li><code>tuple(tuple(int), ndarray)</code>: First element is tuple of size B that has indices of max probabilities (argmax).
+            Second element is fixed-point Q7.7 output array with dtype <code>uint16</code> and shape (B, N).</li>
     </ul>
 
     <div class="section-title">Notes</div>
     <ul>
-        <li>Maximum output value is <code>10000</code>, representing probability 1.0.</li>
+        <li>Maximum output value is <code>100 * 2<sup>7</sup></code>, representing probability 100%.</li>
         <li>Designed for integer-only inference pipelines.</li>
     </ul>
 </div>
@@ -169,15 +180,17 @@
 
     <div class="section-title">Parameters</div>
     <ul>
-        <li><code>x</code> (<code>ndarray</code>): Fixed-point softmax output.</li>
+        <li><code>x</code> (<code>uint16</code>): Fixed-point softmax output.</li>
     </ul>
 
     <div class="section-title">Returns</div>
     <ul>
-        <li><code>ndarray</code>: Confidence values derived from scaled softmax output.</li>
+        <li><code>tuple(uint8, uint8)</code>: First element is integer part of confidence (0-100). Second element is fractional part of confidence (0-99).
+        Easy to use with python f strings. i.e. print("{conf[0]}.{conf[1]}%") displays confidence as percentage.</li>
     </ul>
 </div>
 
+<hr class="section-divider">
 <div class="category">Layers</div>
 
 <div class="function" id="dropout">
@@ -188,71 +201,83 @@
 
     <div class="section-title">Parameters</div>
     <ul>
-        <li><code>x</code> (<code>ndarray</code>): Input array.</li>
-        <li><code>p</code> (<code>float</code>, optional): Dropout probability (default 0.5).</li>
+        <li><code>x</code> (<code>ndarray</code>): Input array of any numeric dtype.</li>
+        <li><code>p</code> (<code>float</code>, Optional): Dropout probability (default 0.5).</li>
     </ul>
 
     <div class="section-title">Returns</div>
     <ul>
-        <li><code>ndarray</code>: Output array with randomly zeroed elements.</li>
+        <li><code>ndarray</code>: Output array with randomly zeroed elements. Same shape and dtype as <code>x</code>.</li>
     </ul>
 </div>
 
 <div class="function" id="maxpool1d">
     <h3>Maxpool1d</h3>
-    <div class="signature">ulabML.maxpool1d(x, kernel_size=2)</div>
+    <div class="signature">ulabML.maxpool1d(x, k=2)</div>
 
     <p>Perform 1D max pooling over a 3D input tensor.</p>
 
     <div class="section-title">Parameters</div>
     <ul>
         <li><code>x</code> (<code>ndarray</code>): Input array of shape <code>(B, C, N)</code>.</li>
-        <li><code>kernel_size</code> (<code>int</code>, optional): Pool size and stride (default 2).</li>
+        <li><code>k</code> (<code>int</code>, Optional): Kernel/Pool size as well as Stride(default 2).</li>
     </ul>
 
     <div class="section-title">Returns</div>
     <ul>
-        <li><code>ndarray</code>: Pooled output array.</li>
+        <li><code>ndarray</code>: Pooled output array of shape (B, C, N//k) with dtype same as <code>x</code>.
+        Since last dim is of size <code>N//k</code>, if N % k &ne; 0, the last element(s) are ignored when pooling.</li>
     </ul>
 </div>
 
 <div class="function" id="conv1d">
     <h3>Conv1d</h3>
-    <div class="signature">ulabML.conv1d(x, kernel, bias=None)</div>
+    <div class="signature">ulabML.conv1d(x, kernel, bias=<b>0</b>)</div>
 
-    <p>Perform a floating-point 1D convolution.</p>
+    <p>Perform a floating-point 1D convolution, meaning all inputs must be float. Function doesn't cast automatically.
+        Stride and dilation are 1, and padding is 'same' for this implementation.</p>
 
     <div class="section-title">Parameters</div>
     <ul>
-        <li><code>x</code>: Shape <code>(B, Cin, N)</code></li>
-        <li><code>kernel</code>: Shape <code>(Cout, Cin, K)</code></li>
-        <li><code>bias</code>: Optional, shape <code>(Cout)</code></li>
+        <li><code>x</code>(<code>ndarray</code>): Shape <code>(B, Cin, N)</code></li>
+        <li><code>kernel</code>(<code>ndarray</code>): Shape <code>(Cout, Cin, K)</code></li>
+        <li><code>bias</code>(<code>ndarray</code>, Optional): Shape <code>(Cout)</code></li>
     </ul>
 
     <div class="section-title">Returns</div>
     <ul>
-        <li><code>ndarray</code>: Output of shape <code>(B, Cout, N)</code></li>
+        <li><code>ndarray</code>: Output of shape <code>(B, Cout, N)</code> and dtype float</li>
     </ul>
 </div>
 
 <div class="function" id="qconvrelu1d">
     <h3>Quantized Fused ConvRelu1d</h3>
-    <div class="signature">ulabML.qconvrelu1d(x, kernel, bias=None, quant_params=None)</div>
+    <div class="signature">ulabML.qconvrelu1d(x, kernel, bias=<b>0</b>, quant_params=(1, 0, 0))</div>
 
-    <p>Quantized 1D convolution followed by ReLU activation.</p>
+    <p>Quantized 1D convolution with fused ReLU activation for integer-only inference. 
+        Stride and dilation are 1, and padding is 'same' for this implementation.</p>
 
     <div class="section-title">Parameters</div>
     <ul>
-        <li><code>x</code>: ndarray (8- or 16-bit uint or int).</li>
-        <li><code>kernel</code>: Quantized kernel array.</li>
-        <li><code>bias</code>: Optional bias array.</li>
-        <li><code>quant_params</code>: Optional 3-tuple
-            <code>(multiplier, shift, zero_point)</code>.</li>
+        <li><code>x</code>(<code>ndarray</code>): Quantized input array of shape (B, Cin, N) and dtype (8- or 16-bit uint or int).</li>
+        <li><code>kernel</code>(<code>ndarray</code>): Quantized kernel array of shape (Cout, Cin, K) and dtype (8- or 16-bit uint or int).</li>
+        <li><code>bias</code>(<code>ndarray</code>, Optional): Bias array of shape (Cout,) and dtype int32.</li>
+        <li><code>quant_params</code>(<code>tuple</code>, Optional): 3 integer tuple of quantization parameters
+            <code>(multiplier, shift, output_zero_point)</code>. Uses the quantization scheme described by Google in 
+            <a href="https://arxiv.org/pdf/1712.05877"><u>Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference</u></a>.
+            Multiplier is the final int32 result of multiplying the effective scale (<span><sup>S1 × S2</sup>&frasl;<sub>S3</sub></span>) 
+            by 2<sup>shift + 31</sup>. Both the multiplier and shift are expected to be non-negative. 
+            Output zero point corresponds to Z<sub>3</sub> in equation (4).</li>
     </ul>
 
     <div class="section-title">Returns</div>
     <ul>
-        <li><code>ndarray</code>: Quantized output array.</li>
+        <li><code>ndarray</code>: Quantized output array of same dtype and shape as <code>x</code>.</li>
+    </ul>
+    <div class="section-title">Notes</div>
+    <ul>
+        <li><code>x</code> and <code>kernel</code> scales are wrapped into the multiplier, but if they have non-zero zero points, it is expected that
+        the ndarrays will have this value subtracted before calling this function.</li>
     </ul>
 </div>
 
