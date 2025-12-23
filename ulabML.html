@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ulabml — MicroPython ML Utilities</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            color: #222;
+        }
+        h1, h2 {
+            color: #003366;
+        }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
+        .category + .function {
+            border-top: none;
+            padding-top: 0rem; 
+            /*margin-bottom: 0.5rem;   reduce space under the heading */
+        }
+        .function {
+            border-top: 5px solid #ddd;
+            margin-top: 2.5rem;
+            padding-top: 2rem;
+        }
+        .signature {
+            font-family: monospace;
+            font-size: 1.05em;
+            margin-bottom: 0.5rem;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+        .category {
+            font-weight: bold;
+            color: #000;
+            margin-top: 2rem;
+            font-size: 1.2em;
+        }
+        a {
+            text-decoration: none;
+            color: #003366;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .func-list {
+            margin-left: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+
+<h1>ulabML</h1>
+<p>
+    <strong>ulabML</strong> is a lightweight embedded machine-learning utility module for MicroPython,
+    built on top of <code>ulab.numpy.ndarray</code>. It provides common neural-network operations
+    optimized for microcontrollers and resource-constrained environments.
+</p>
+
+<p>
+    All functions:
+</p>
+<ul>
+    <li>Require a <code>ndarray</code> as their first argument</li>
+    <li>Never modify ndarrays inplace</code></li>
+    <li>Do <strong>not</strong> accept keyword arguments</li>
+    <li>Only work with arrays that are a maximum of 3 dimensions (for now)</li>
+</ul>
+
+<h2>Function Overview</h2>
+
+<div class="category">Activations</div>
+<div class="func-list">
+    <p>
+        <a href="#relu"><code>relu(x)</code></a><br>
+        Rectified Linear Unit activation, element-wise.
+    </p>
+    <p>
+        <a href="#softmax"><code>softmax(x)</code></a><br>
+        Fixed-point softmax for integer input arrays.
+    </p>
+    <p>
+        <a href="#confidence"><code>confidence(x)</code></a><br>
+        Convert fixed-point softmax output to percent confidence.
+    </p>
+</div>
+
+<div class="category">Layers</div>
+<div class="func-list">
+    <p>
+        <a href="#dropout"><code>dropout(x, p=0.5)</code></a><br>
+        Apply dropout regularization.
+    </p>
+    <p>
+        <a href="#maxpool1d"><code>maxpool1d(x, kernel_size=2)</code></a><br>
+        1D max pooling over a 3D input tensor.
+    </p>
+    <p>
+        <a href="#conv1d"><code>conv1d(x, kernel, bias=<b>0</b>)</code></a><br>
+        Floating-point 1D convolution layer.
+    </p>
+    <p>
+        <a href="#qconvrelu1d"><code>qconvrelu1d(x, kernel, bias=<b>0</b>, quant_params=(1, 0, 0))</code></a><br>
+        Quantized 1D convolution followed by ReLU.
+    </p>
+</div>
+
+<h2>Function Documentation</h2>
+
+<div class="category">Activations</div>
+
+<div class="function" id="relu">
+    <h4>Relu</h4>
+    <div class="signature">ulabML.relu(x)</div>
+
+    <p>Apply the ReLU (Rectified Linear Unit) activation function element-wise.</p>
+
+    <div class="section-title">Parameters</div>
+    <ul>
+        <li><code>x</code> (<code>ndarray</code>): Input array of any numeric dtype.</li>
+    </ul>
+
+    <div class="section-title">Returns</div>
+    <ul>
+        <li><code>ndarray</code>: Output array with the same shape and dtype as <code>x</code>,
+            where negative values are clipped to zero.</li>
+    </ul>
+</div>
+
+<div class="function" id="softmax">
+    <h3>Softmax</h3>
+    <div class="signature">ulabML.softmax(x)</div>
+
+    <p>Compute the softmax activation for integer-valued input arrays.</p>
+
+    <div class="section-title">Parameters</div>
+    <ul>
+        <li><code>x</code> (<code>ndarray</code>): Integer input array.
+            Assumes <code>max(x) ≤ INT_MAX</code>.</li>
+    </ul>
+
+    <div class="section-title">Returns</div>
+    <ul>
+        <li><code>ndarray</code>: Fixed-point output array with dtype <code>uint16</code>.</li>
+    </ul>
+
+    <div class="section-title">Notes</div>
+    <ul>
+        <li>Maximum output value is <code>10000</code>, representing probability 1.0.</li>
+        <li>Designed for integer-only inference pipelines.</li>
+    </ul>
+</div>
+
+<div class="function" id="confidence">
+    <h3>Confidence</h3>
+    <div class="signature">ulabML.confidence(x)</div>
+
+    <p>Convert fixed-point softmax output into confidence values suitable for display.</p>
+
+    <div class="section-title">Parameters</div>
+    <ul>
+        <li><code>x</code> (<code>ndarray</code>): Fixed-point softmax output.</li>
+    </ul>
+
+    <div class="section-title">Returns</div>
+    <ul>
+        <li><code>ndarray</code>: Confidence values derived from scaled softmax output.</li>
+    </ul>
+</div>
+
+<div class="category">Layers</div>
+
+<div class="function" id="dropout">
+    <h3>Dropout</h3>
+    <div class="signature">ulabML.dropout(x, p=0.5)</div>
+
+    <p>Apply dropout regularization to an input array.</p>
+
+    <div class="section-title">Parameters</div>
+    <ul>
+        <li><code>x</code> (<code>ndarray</code>): Input array.</li>
+        <li><code>p</code> (<code>float</code>, optional): Dropout probability (default 0.5).</li>
+    </ul>
+
+    <div class="section-title">Returns</div>
+    <ul>
+        <li><code>ndarray</code>: Output array with randomly zeroed elements.</li>
+    </ul>
+</div>
+
+<div class="function" id="maxpool1d">
+    <h3>Maxpool1d</h3>
+    <div class="signature">ulabML.maxpool1d(x, kernel_size=2)</div>
+
+    <p>Perform 1D max pooling over a 3D input tensor.</p>
+
+    <div class="section-title">Parameters</div>
+    <ul>
+        <li><code>x</code> (<code>ndarray</code>): Input array of shape <code>(B, C, N)</code>.</li>
+        <li><code>kernel_size</code> (<code>int</code>, optional): Pool size and stride (default 2).</li>
+    </ul>
+
+    <div class="section-title">Returns</div>
+    <ul>
+        <li><code>ndarray</code>: Pooled output array.</li>
+    </ul>
+</div>
+
+<div class="function" id="conv1d">
+    <h3>Conv1d</h3>
+    <div class="signature">ulabML.conv1d(x, kernel, bias=None)</div>
+
+    <p>Perform a floating-point 1D convolution.</p>
+
+    <div class="section-title">Parameters</div>
+    <ul>
+        <li><code>x</code>: Shape <code>(B, Cin, N)</code></li>
+        <li><code>kernel</code>: Shape <code>(Cout, Cin, K)</code></li>
+        <li><code>bias</code>: Optional, shape <code>(Cout)</code></li>
+    </ul>
+
+    <div class="section-title">Returns</div>
+    <ul>
+        <li><code>ndarray</code>: Output of shape <code>(B, Cout, N)</code></li>
+    </ul>
+</div>
+
+<div class="function" id="qconvrelu1d">
+    <h3>Quantized Fused ConvRelu1d</h3>
+    <div class="signature">ulabML.qconvrelu1d(x, kernel, bias=None, quant_params=None)</div>
+
+    <p>Quantized 1D convolution followed by ReLU activation.</p>
+
+    <div class="section-title">Parameters</div>
+    <ul>
+        <li><code>x</code>: ndarray (8- or 16-bit uint or int).</li>
+        <li><code>kernel</code>: Quantized kernel array.</li>
+        <li><code>bias</code>: Optional bias array.</li>
+        <li><code>quant_params</code>: Optional 3-tuple
+            <code>(multiplier, shift, zero_point)</code>.</li>
+    </ul>
+
+    <div class="section-title">Returns</div>
+    <ul>
+        <li><code>ndarray</code>: Quantized output array.</li>
+    </ul>
+</div>
+
+</body>
+</html>
