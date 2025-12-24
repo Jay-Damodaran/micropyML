@@ -86,7 +86,7 @@
     <li>Return a <code>ndarray</code> for almost all functions</li>
     <li>Do <strong>not</strong> accept keyword arguments</li>
     <li>Only work with arrays that are a maximum of 3 dimensions (for now)</li>
-    <li>Verify datatypes and dimensionality of arguments as preconditions for user convenience; however, no shape/length checks are performed as of now,
+    <li>For user convenience, verify datatypes and dimensionality of arguments as function preconditions; however, no shape/length checks are performed as of now,
         so if array shapes/lengths are incompatible, unexpected behavior may occur i.e. Indexing Out of Bounds.
         <ul><li>For example, conv1d checks that all inputs are ndarrays and that x and kernel have 3-dims while bias has 1-dim. However, it
             doesn't verify that the Cin dimension of x matches that of kernel, or that the Cout dimension of kernel matches the length of bias.
@@ -162,8 +162,9 @@
 
     <div class="section-title">Parameters</div>
     <ul>
-        <li><code>x</code> (<code>ndarray</code>): array of shape (B, N) with dtype 8- or 16-bit uint/int.
-            Only guaranteed to be safe from overflow if N < 1024.</li>
+        <li><code>x</code> (<code>ndarray</code>): array of shape (B, N) with dtype 8-bit uint/int.
+            Softmax is computed along the last dimension (N). Only guaranteed to be safe from overflow 
+            if N < 1024.</li>
     </ul>
 
     <div class="section-title">Returns</div>
@@ -187,15 +188,16 @@
 
     <div class="section-title">Parameters</div>
     <ul>
-        <li><code>x</code> (<code>uint16 or tuple(uint16)</code>): Fixed-point softmax output for a single class or multiple classes.</li>
+        <li><code>x</code> (<code>uint16 or ndarray</code>): Fixed-point softmax output for a single class or multiple classes.
+            If x is an ndarray, it must be 1D and have dtype uint16.</li>
     </ul>
 
     <div class="section-title">Returns</div>
     <ul>
         <li><code>tuple(uint8) or tuple(tuple(uint8))</code>: If a single scalar uint16 is supplied, a 2 element tuple is returned. 
-            First element is integer part of confidence (0-100). Second element is fractional part of confidence (0-99).
-            Easy to use with python f strings. i.e. print(f"{conf[0]}.{conf[1]}%") displays confidence as percentage.
-            If a tuple is supplied, then a tuple is returned of the same length. Each entry in the returned tuple is a 2 element tuple
+            First element is the integer part of the confidence (0-100). Second element is the fractional part of confidence (0-99).
+            This makes it easy to use with python f strings. For example, print(f"{conf[0]}.{conf[1]}%") displays confidence as percentage.
+            If a ndarray of uint16 is supplied, then a tuple is returned of the same length. Each entry in the returned tuple is a 2 element tuple
             with the same format mentioned above.</li>
     </ul>
 </div>

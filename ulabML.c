@@ -1,7 +1,5 @@
 #include "py/obj.h"
 #include "py/runtime.h"
-#include "py/objarray.h"
-#include "py/objtuple.h"
 
 #include "ulab.h"
 #include "ndarray.h"
@@ -128,8 +126,8 @@ MP_DEFINE_CONST_FUN_OBJ_1(softmax_obj, softmax);
 
 // takes Q7.7 softmax val and converts to percent confidence in range [0.00, 100.00]
 mp_obj_t confidence(mp_obj_t x) {
-    if(!(mp_obj_is_int(x) || mp_obj_is_tuple_compatible(x)))
-        mp_raise_TypeError(MP_ERROR_TEXT("Expected integer kernel size"));
+    if(!(mp_obj_is_int(x) || mp_obj_is_type(x, &ulab_ndarray_type)))
+        mp_raise_TypeError(MP_ERROR_TEXT("Expected integer or ndarray softmax output"));
     if(mp_obj_is_int(x)) {
         uint16_t quantized_conf = mp_obj_get_int(x);
         uint8_t intbits = quantized_conf >> FRACBITS;
@@ -137,19 +135,20 @@ mp_obj_t confidence(mp_obj_t x) {
         mp_obj_t return_vals[2] = {MP_OBJ_NEW_SMALL_INT(intbits), MP_OBJ_NEW_SMALL_INT(floatbits)};
         return mp_obj_new_tuple(2, return_vals);
     }
-    size_t len;
-    mp_obj_t *items;
-    mp_obj_tuple_get(x, &len, &items);
+    ndarray_obj_t *x_pt = MP_OBJ_TO_PTR(x);
+    if(!(x_pt->dtype == NDARRAY_UINT16 && x_pt->ndim == 1))
+        mp_raise_TypeError(MP_ERROR_TEXT("Expected 1D ndarray of dtype uint16"));
+    uint16_t *x_arr = (uint16_t *)x_pt->array;
     mp_obj_t int_float_bits[2];
     uint16_t quantized_conf;
-    mp_obj_t return_vals[len];
-    for(size_t i = 0; i < len; i++) {
-        quantized_conf = mp_obj_get_int(items[i]);
+    mp_obj_t return_vals[x_pt->len];
+    for(size_t i = 0; i < x_pt->len; i++) {
+        quantized_conf = x_arr[i];
         int_float_bits[0] = MP_OBJ_NEW_SMALL_INT(quantized_conf >> FRACBITS);
         int_float_bits[1] = MP_OBJ_NEW_SMALL_INT(((quantized_conf & 0x7F) * 100 + (1 << (FRACBITS - 1))) >> FRACBITS); // +64 rounds to nearest hundredths
         return_vals[i] = mp_obj_new_tuple(2, int_float_bits);
     }
-    return mp_obj_new_tuple(len, return_vals);
+    return mp_obj_new_tuple(x_pt->len, return_vals);
 }
 MP_DEFINE_CONST_FUN_OBJ_1(confidence_obj, confidence);
 
