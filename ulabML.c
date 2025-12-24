@@ -1,7 +1,7 @@
 #include "py/obj.h"
 #include "py/runtime.h"
 #include "py/objarray.h"
-#include "py/mpprint.h"
+#include "py/objtuple.h"
 
 #include "ulab.h"
 #include "ndarray.h"
@@ -128,13 +128,28 @@ MP_DEFINE_CONST_FUN_OBJ_1(softmax_obj, softmax);
 
 // takes Q7.7 softmax val and converts to percent confidence in range [0.00, 100.00]
 mp_obj_t confidence(mp_obj_t x) {
-    if(!mp_obj_is_int(x))
+    if(!(mp_obj_is_int(x) || mp_obj_is_tuple_compatible(x)))
         mp_raise_TypeError(MP_ERROR_TEXT("Expected integer kernel size"));
-    uint16_t quantized_conf = mp_obj_get_int(x);
-    uint8_t intbits = quantized_conf >> FRACBITS;
-    uint8_t floatbits = ((quantized_conf & 0x7F) * 100 + (1<<(FRACBITS-1))) >> FRACBITS; // +64 rounds to nearest hundredths
-    mp_obj_t return_vals[2] = {MP_OBJ_NEW_SMALL_INT(intbits), MP_OBJ_NEW_SMALL_INT(floatbits)};
-    return mp_obj_new_tuple(2, return_vals);
+    if(mp_obj_is_int(x)) {
+        uint16_t quantized_conf = mp_obj_get_int(x);
+        uint8_t intbits = quantized_conf >> FRACBITS;
+        uint8_t floatbits = ((quantized_conf & 0x7F) * 100 + (1 << (FRACBITS - 1))) >> FRACBITS; // +64 rounds to nearest hundredths
+        mp_obj_t return_vals[2] = {MP_OBJ_NEW_SMALL_INT(intbits), MP_OBJ_NEW_SMALL_INT(floatbits)};
+        return mp_obj_new_tuple(2, return_vals);
+    }
+    size_t len;
+    mp_obj_t *items;
+    mp_obj_tuple_get(x, &len, &items);
+    mp_obj_t int_float_bits[2];
+    uint16_t quantized_conf;
+    mp_obj_t return_vals[len];
+    for(size_t i = 0; i < len; i++) {
+        quantized_conf = mp_obj_get_int(items[i]);
+        int_float_bits[0] = MP_OBJ_NEW_SMALL_INT(quantized_conf >> FRACBITS);
+        int_float_bits[1] = MP_OBJ_NEW_SMALL_INT(((quantized_conf & 0x7F) * 100 + (1 << (FRACBITS - 1))) >> FRACBITS); // +64 rounds to nearest hundredths
+        return_vals[i] = mp_obj_new_tuple(2, int_float_bits);
+    }
+    return mp_obj_new_tuple(len, return_vals);
 }
 MP_DEFINE_CONST_FUN_OBJ_1(confidence_obj, confidence);
 
@@ -273,7 +288,8 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(maxpool1d_obj, 1, 2, maxpool1d);
 
 static inline int32_t requantize(int32_t accum, int32_t multiplier, uint8_t shift, int32_t zero_pt){
     int64_t product = (int64_t)accum * (int64_t)multiplier;
-    product = product > 0 ? product + ((int64_t)1 << (30+shift)) : product - ((int64_t)1 << (30+shift));
+    if(product > 0)
+        product += ((int64_t)1 << (30 + shift));
     product >>= (31 + shift);
     return (int32_t)product + zero_pt; // saturating cast into lower precision range is calling function's responsibility
 }
