@@ -103,6 +103,10 @@
         Rectified Linear Unit activation, element-wise.
     </p>
     <p>
+        <a href="#relun"><code>reluN(x, N=6)</code></a><br>
+        ReLU activation with configurable upper bound. ReLU6 is widely used.
+    </p>
+    <p>
         <a href="#softmax"><code>softmax(x)</code></a><br>
         Fixed-point softmax for integer input arrays.
     </p>
@@ -144,13 +148,44 @@
 
     <div class="section-title">Parameters</div>
     <ul>
-        <li><code>x</code> (<code>ndarray</code>): Input array of any numeric dtype.</li>
+        <li><code>x</code> (<code>ndarray</code>): Input array of any numeric dtype and shape.</li>
     </ul>
 
     <div class="section-title">Returns</div>
     <ul>
         <li><code>ndarray</code>: Output array with the same shape and dtype as <code>x</code>,
             where negative values are clipped to zero.</li>
+    </ul>
+</div>
+
+<div class="function" id="relun">
+    <h3>reluN</h3>
+    <div class="signature">micropyML.reluN(x, N=6)</div>
+
+    <p>
+        Apply a clipped ReLU activation function element-wise, where the output
+        is limited to an upper bound <code>N</code>. ReLU6 is most commonly used in
+        mobile and edge applications. The upper bound of 6 is based on tests performed in
+        <a href="https://www.cs.utoronto.ca/~kriz/conv-cifar10-aug2010.pdf"><u>Convolutional Deep Belief Networks on CIFAR-10</u></a>.
+    </p>
+
+    <div class="section-title">Parameters</div>
+    <ul>
+        <li>
+            <code>x</code> (<code>ndarray</code>): Input array of dtype int8 and any shape.
+        </li>
+        <li>
+            <code>N</code> (<code>int8</code>, Optional): Upper bound for the activation
+            (default 6).
+        </li>
+    </ul>
+
+    <div class="section-title">Returns</div>
+    <ul>
+        <li>
+            <code>ndarray</code>: Output array with the same shape and dtype as <code>x</code>,
+            where values are clipped to the range <code>[0, N]</code>.
+        </li>
     </ul>
 </div>
 

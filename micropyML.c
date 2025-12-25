@@ -5,11 +5,10 @@
 #include "ndarray.h"
 #include "micropyML.h"
 
-#include "stdint.h"
-#include "stdlib.h"
-#include "time.h"
-#include "limits.h"
-#include "math.h"
+#include <stdint.h>
+#include <stdlib.h>
+#include <time.h>
+#include <math.h>
 
 #define RELU_LOOP(type) \
     type *arr = (type *) arr_pt->array;\
@@ -49,6 +48,30 @@ mp_obj_t relu(const mp_obj_t x){
     return MP_OBJ_FROM_PTR(out_arr_pt);
 }
 MP_DEFINE_CONST_FUN_OBJ_1(relu_obj, relu);
+
+
+mp_obj_t reluN(size_t n_args, const mp_obj_t *args){
+    int8_t N = 6;
+    if(!mp_obj_is_type(args[0], &ulab_ndarray_type)){
+        mp_raise_TypeError(MP_ERROR_TEXT("Expected ndarray"));
+    }
+    ndarray_obj_t *arr_pt = MP_OBJ_TO_PTR(args[0]);
+    if(arr_pt->dtype != NDARRAY_INT8)
+        mp_raise_TypeError(MP_ERROR_TEXT("Expected ndarray of dtype int8"));
+    if(n_args == 2 && !mp_obj_is_int(args[1]))
+        mp_raise_TypeError(MP_ERROR_TEXT("Expected integer value for N"));
+    else if(n_args == 2)
+        N = mp_obj_get_int(args[1]);
+
+    int8_t *arr = (int8_t *) arr_pt->array;
+    ndarray_obj_t *out_arr_pt = ndarray_new_dense_ndarray(arr_pt->ndim, arr_pt->shape, arr_pt->dtype);
+    int8_t *out_arr = (int8_t *) out_arr_pt->array;
+    for(size_t i = 0; i < arr_pt->len; i++) {
+        out_arr[i] = arr[i] < 0 ? 0 : (arr[i] > N ? N : arr[i]);
+    }
+    return MP_OBJ_FROM_PTR(out_arr_pt);
+}
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(reluN_obj, 1, 2, reluN);
 
 // 2^(x_i - max + 22) / sum(2^(x - max + 22))
 // Outputs are Q7.7 on interval [0, 100]
@@ -490,6 +513,7 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(conv1d_obj, 2, 3, conv1d);
 // place functions in ROM globals table
 static const mp_rom_map_elem_t micropyML_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_relu), MP_ROM_PTR(&relu_obj) },
+    { MP_ROM_QSTR(MP_QSTR_reluN), MP_ROM_PTR(&reluN_obj) },
     { MP_ROM_QSTR(MP_QSTR_softmax), MP_ROM_PTR(&softmax_obj) },
     { MP_ROM_QSTR(MP_QSTR_confidence), MP_ROM_PTR(&confidence_obj) },
     { MP_ROM_QSTR(MP_QSTR_dropout), MP_ROM_PTR(&dropout_obj) },
