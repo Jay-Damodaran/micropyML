@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ulabml — MicroPython ML Utilities</title>
+    <title>micropyml — MicroPython ML Utilities</title>
     <style>
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -70,15 +70,15 @@
 </head>
 <body>
 
-<h1>ulabML</h1>
+<h1>micropyML</h1>
 <p>
-    <strong>ulabML</strong> is a lightweight embedded machine-learning utility module for MicroPython,
+    <strong>micropyML</strong> is a lightweight embedded machine-learning utility module for MicroPython,
     built on top of <code>ulab.numpy.ndarray</code>. It provides common neural-network operations
     optimized for microcontrollers and resource-constrained environments.
 </p>
 
 <p>
-    ulabML functions:
+    micropyML functions:
 </p>
 <ul>
     <li>Never modify ndarray inputs inplace</li>
@@ -138,7 +138,7 @@
 
 <div class="function" id="relu">
     <h3>Relu</h3>
-    <div class="signature">ulabML.relu(x)</div>
+    <div class="signature">micropyML.relu(x)</div>
 
     <p>Apply the ReLU (Rectified Linear Unit) activation function element-wise.</p>
 
@@ -156,7 +156,7 @@
 
 <div class="function" id="softmax">
     <h3>Softmax</h3>
-    <div class="signature">ulabML.softmax(x)</div>
+    <div class="signature">micropyML.softmax(x)</div>
 
     <p>Compute the softmax activation for integer-valued input arrays.</p>
 
@@ -182,7 +182,7 @@
 
 <div class="function" id="confidence">
     <h3>Confidence</h3>
-    <div class="signature">ulabML.confidence(x)</div>
+    <div class="signature">micropyML.confidence(x)</div>
 
     <p>Convert fixed-point softmax output into confidence values suitable for display.</p>
 
@@ -207,7 +207,7 @@
 
 <div class="function" id="dropout">
     <h3>Dropout</h3>
-    <div class="signature">ulabML.dropout(x, p=0.5)</div>
+    <div class="signature">micropyML.dropout(x, p=0.5)</div>
 
     <p>Apply dropout regularization to an input array.</p>
 
@@ -225,7 +225,7 @@
 
 <div class="function" id="maxpool1d">
     <h3>Maxpool1d</h3>
-    <div class="signature">ulabML.maxpool1d(x, k=2)</div>
+    <div class="signature">micropyML.maxpool1d(x, k=2)</div>
 
     <p>Perform 1D max pooling over a 3D input tensor.</p>
 
@@ -244,7 +244,7 @@
 
 <div class="function" id="conv1d">
     <h3>Conv1d</h3>
-    <div class="signature">ulabML.conv1d(x, kernel, bias=<b>0</b>)</div>
+    <div class="signature">micropyML.conv1d(x, kernel, bias=<b>0</b>)</div>
 
     <p>Perform a floating-point 1D convolution, meaning all inputs must be float. Function doesn't cast automatically.
         Stride and dilation are 1, and padding is 'same' for this implementation.</p>
@@ -264,7 +264,7 @@
 
 <div class="function" id="qconvrelu1d">
     <h3>Quantized Fused ConvRelu1d</h3>
-    <div class="signature">ulabML.qconvrelu1d(x, kernel, bias=<b>0</b>, quant_params=(1, 0, 0))</div>
+    <div class="signature">micropyML.qconvrelu1d(x, kernel, bias=<b>0</b>, quant_params=(1, 0, 0))</div>
 
     <p>Quantized 1D convolution with fused ReLU activation for integer-only inference. 
         Stride and dilation are 1, and padding is 'same' for this implementation.</p>
