@@ -2,8 +2,8 @@
 // Created by Jay on 11/16/2025.
 //
 
-#ifndef ULABML_H
-#define ULABML_H
+#ifndef MICROPYML_H
+#define MICROPYML_H
 
 // function that performs relu activation on ndarray
 mp_obj_t relu(mp_obj_t x);
@@ -60,4 +60,4 @@ MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(maxpool1d_obj);
 MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(conv1d_obj);
 MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(qconvrelu1d_obj);
 
-#endif //ULABML_H
+#endif //MICROPYML_H
