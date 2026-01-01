@@ -123,7 +123,7 @@ mp_obj_t softmax(const mp_obj_t x){
     }
     ndarray_obj_t *prob_vec = ndarray_new_dense_ndarray(x_pt->ndim, x_pt->shape, NDARRAY_UINT16);
     uint32_t exp_sum = 0;
-    mp_obj_t argmax[x_pt->shape[1]];
+    mp_obj_t argmax[x_pt->shape[1]]; // 1 because for 2D ndarrays first actual dim is at index 1
     uint16_t *prob_arr = (uint16_t *)prob_vec->array; // holds 14-bit fixed pt prob vals (7 int bits and 7 frac bits)
     int16_t offset = INT16_MIN;
     switch(x_pt->dtype) {
