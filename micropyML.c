@@ -310,8 +310,10 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(maxpool1d_obj, 1, 2, maxpool1d);
 
 static inline int32_t requantize(int32_t accum, int32_t multiplier, uint8_t shift, int32_t zero_pt){
     int64_t product = (int64_t)accum * (int64_t)multiplier;
-    if(product > 0)
+    if(product >= 0)
         product += ((int64_t)1 << (30 + shift));
+    else
+        product = -(-product + (int64_t)1 << (30 + shift));
     product >>= (31 + shift);
     return (int32_t)product + zero_pt; // saturating cast into lower precision range is calling function's responsibility
 }
