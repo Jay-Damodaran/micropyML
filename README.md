@@ -7,7 +7,7 @@ Docs: https://jay-damodaran.github.io/micropyML/
 ## Build Process
 There may be alternative directory structures that work, but this is what I did to build the firmware. 
 
-1. Clone micropython, ulab, and micropyML into a build directory  
+1. Clone micropython, ulab, and micropyML into a designated build/project directory  
 project/  
 ├── micropython  
 ├── ulab  
@@ -20,6 +20,8 @@ project/
 ├── micropyML  
 ├── micropython.cmake  
 
-3. Follow the micropython build process for your board with setting USER_C_MODULES = .../micropython.cmake in the final build step
+3. Follow the micropython build process for your board with setting USER_C_MODULES = {your_path}/micropython.cmake in the final build step
 4. Flash the resulting firmware file to your board
 
+## Notes
+The shell build script for the Raspberry Pico 2W is inside buildFiles. Execute this script inside the build directory. 
