@@ -313,7 +313,7 @@ static inline int32_t requantize(int32_t accum, int32_t multiplier, uint8_t shif
     if(product >= 0)
         product += ((int64_t)1 << (30 + shift));
     else
-        product = -(-product + (int64_t)1 << (30 + shift));
+        product = -(-product + ((int64_t)1 << (30 + shift)));
     product >>= (31 + shift);
     return (int32_t)product + zero_pt; // saturating cast into lower precision range is calling function's responsibility
 }
