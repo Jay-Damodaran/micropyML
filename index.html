@@ -127,6 +127,10 @@
         1D max pooling over a 3D input tensor.
     </p>
     <p>
+        <a href="#qmaxpool1d"><code>qmaxpool1d(x, k=2, quant_params)</code></a><br>
+        Quantized 1D max pooling over a 3D input tensor with requantization of outputs.
+    </p>
+    <p>
         <a href="#conv1d"><code>conv1d(x, kernel, bias=<b>0</b>)</code></a><br>
         Floating-point 1D convolution layer.
     </p>
@@ -274,6 +278,44 @@
     <ul>
         <li><code>ndarray</code>: Pooled output array of shape (B, C, N//k) with dtype same as <code>x</code>.
         Since last dim is of size <code>N//k</code>, if N % k &ne; 0, the last element(s) are ignored when pooling.</li>
+    </ul>
+</div>
+
+<div class="function" id="qmaxpool1d">
+    <h3>Quantized Maxpool1d</h3>
+    <div class="signature">micropyML.qmaxpool1d(x, k=2, quant_params)</div>
+
+    <p>Perform Quantized 1D max pooling over a 3D input tensor.</p>
+
+    <div class="section-title">Parameters</div>
+    <ul>
+        <li><code>x</code> (<code>ndarray</code>): Input array of shape <code>(B, C, N)</code> and dtype (8- or 16-bit uint or int).</li>
+        <li><code>k</code> (<code>int</code>, Optional): Kernel/Pool size as well as Stride(default 2).</li>
+        <li><code>quant_params</code> (<code>tuple</code>): 4 integer tuple of quantization parameters. 
+            <code>(multiplier, shift, input_zero_point, output_zero_point)</code>. Based on the quantization scheme described by Google 
+            in <a href="https://arxiv.org/pdf/1712.05877"><u>Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference</u></a>.
+            Multiplier is the int16 fixed point result of dividing the input scale by the output scale. It's computed with a similar procedure 
+            to the normalized multiplier in the paper. Shift is the bit shift needed to get the raw float multiplier into range [0.5, 1). 
+            Then, this is multiplied by 215 to get the final int16 multiplier. Multiplier is expected to be non-negative.
+        </li>
+    </ul>
+
+    <div class="section-title">Returns</div>
+    <ul>
+        <li><code>ndarray</code>: Pooled output array of shape (B, C, N//k) with dtype same as <code>x</code>.
+        Since last dim is of size <code>N//k</code>, if N % k &ne; 0, the last element(s) are ignored when pooling.</li>
+    </ul>
+    <div class="section-title">Notes</div>
+    <ul>
+        <li>In this implementation, maxpool is performed in the input quantization scale and then requantization is performed on maxpool 
+            outputs. This should be the equivalent of requantizing first since input and output scales are non-negative, so there is a 
+            monotonic increasing relationship between max in original scale and max in output scale. Requantizing the output saves 
+            computations since input was downsampled.
+        </li>
+        <li>
+            Since there are no weights in max pool, the multiplier is simply input scale / output scale as opposed to the general formula 
+            seen in the paper for performing MACs with integer only arithmetic.
+        </li>
     </ul>
 </div>
 
