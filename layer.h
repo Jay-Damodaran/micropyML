@@ -22,6 +22,10 @@ mp_obj_t dropout(size_t n_args, const mp_obj_t *args);
 //default kernel size/stride is 2
 mp_obj_t maxpool1d(size_t n_args, const mp_obj_t *args);
 
+//function that performs 1D max pool on integer ndarray. Assumes stride=kernel and input ndarray is 3D
+//default kernel size/stride is 2. Quantization parameters are a required argument.
+mp_obj_t qmaxpool1d(size_t n_args, const mp_obj_t *args);
+
 //function that performs 1D convolution on an input ndarray. Assumes stride=1, 'same' padding, and input ndarray is 3D
 //bias is an optional argument
 //x is shape (B, Cin, N)
@@ -40,5 +44,6 @@ mp_obj_t qconvrelu1d(size_t n_args, const mp_obj_t *args);
 
 MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(dropout_obj);
 MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(maxpool1d_obj);
+MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(qmaxpool1d_obj);
 MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(conv1d_obj);
 MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(qconvrelu1d_obj);

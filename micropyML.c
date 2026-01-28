@@ -8,6 +8,7 @@ static const mp_rom_map_elem_t micropyML_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_softmax), MP_ROM_PTR(&softmax_obj) },
     { MP_ROM_QSTR(MP_QSTR_confidence), MP_ROM_PTR(&confidence_obj) },
     { MP_ROM_QSTR(MP_QSTR_dropout), MP_ROM_PTR(&dropout_obj) },
+    { MP_ROM_QSTR(MP_QSTR_qmaxpool1d), MP_ROM_PTR(&qmaxpool1d_obj) },
     { MP_ROM_QSTR(MP_QSTR_maxpool1d), MP_ROM_PTR(&maxpool1d_obj) },
     { MP_ROM_QSTR(MP_QSTR_qconvrelu1d), MP_ROM_PTR(&qconvrelu1d_obj) },
     { MP_ROM_QSTR(MP_QSTR_conv1d), MP_ROM_PTR(&conv1d_obj) },

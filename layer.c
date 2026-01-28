@@ -62,15 +62,32 @@ mp_obj_t dropout(size_t n_args, const mp_obj_t *args){
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(dropout_obj, 1, 2, dropout);
 
+static inline int16_t requantize_int16(int16_t val, int16_t multiplier, int8_t shift, int16_t zp_in, int16_t zp_out){
+    int32_t product = ((int32_t)val - zp_in) * (int32_t)multiplier;
+    if(product >= 0){
+        product += ((int32_t)1 << (14 + shift));
+        product >>= (15 + shift);
+    }
+    else{
+        product = -product + ((int32_t) 1 << (14 + shift));
+        product = -(product >> (15 + shift));
+    }
+    return (int16_t)product + zp_out; // saturating cast into lower precision range is calling function's responsibility
+}
+
 #define MAXPOOL1D_LOOP(type) \
     type *arr = (type *) arr_pt->array; \
     type *out_arr = (type *) out_arr_pt->array;\
     type max = MIN_FOR_TYPE(type);       \
     uint32_t ref = 0;        \
+    int16_t requant;                         \
     for(uint32_t i = 0; i < (arr_pt->len); i++){ \
         if(arr[i] > max) max = arr[i]; \
-        if((i+1-ref) % kernel == 0){ \
-            out_arr[(i-ref)/kernel] = max; \
+        if((i+1-ref) % kernel == 0){    \
+            requant = requantize_int16(max, m0, shift, in_zp, out_zp); \
+            requant = requant < MIN_FOR_TYPE(type) ? MIN_FOR_TYPE(type) : requant; \
+            requant = requant > MAX_FOR_TYPE(type) ? MAX_FOR_TYPE(type) : requant;\
+            out_arr[(i-ref)/kernel] = (type)requant; \
             max = MIN_FOR_TYPE(type); \
         } \
         if((i+1-ref) % (result_shape[2] * kernel) == 0){ \
@@ -79,9 +96,13 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(dropout_obj, 1, 2, dropout);
         } \
     }
 
-mp_obj_t maxpool1d(size_t n_args, const mp_obj_t *args){
+mp_obj_t qmaxpool1d(size_t n_args, const mp_obj_t *args){
     // preconditions ensuring valid ndarray input
     mp_obj_t x = args[0];
+    mp_obj_t m0_obj, shift_obj, in_zp_obj, out_zp_obj;
+    int16_t m0, in_zp, out_zp;
+    int8_t shift;
+
     if(!mp_obj_is_type(x, &ulab_ndarray_type)){
         mp_raise_TypeError(MP_ERROR_TEXT("Expected ndarray as first argument"));
     }
@@ -89,15 +110,33 @@ mp_obj_t maxpool1d(size_t n_args, const mp_obj_t *args){
     if(arr_pt->ndim != 3) mp_raise_ValueError(MP_ERROR_TEXT("Expected 3D array of form (batch, channels, time steps)"));
 
     //preconditions to ensure valid kernel input
-    int32_t kernel;
-    if(n_args == 1){
-        kernel = 2;
-    }
-    else if(!mp_obj_is_int(args[1])){
-        mp_raise_TypeError(MP_ERROR_TEXT("Expected integer kernel size"));
+    int32_t kernel = 2;
+    if(n_args == 2){
+        m0_obj = mp_obj_subscr(args[1], MP_OBJ_NEW_SMALL_INT(0), MP_OBJ_SENTINEL);
+        shift_obj = mp_obj_subscr(args[1], MP_OBJ_NEW_SMALL_INT(1), MP_OBJ_SENTINEL);
+        in_zp_obj = mp_obj_subscr(args[1], MP_OBJ_NEW_SMALL_INT(2), MP_OBJ_SENTINEL);
+        out_zp_obj = mp_obj_subscr(args[1], MP_OBJ_NEW_SMALL_INT(3), MP_OBJ_SENTINEL);
+        if(!(mp_obj_is_int(m0_obj) && mp_obj_is_int(shift_obj) && mp_obj_is_int(in_zp_obj) && mp_obj_is_int(out_zp_obj)))
+            mp_raise_TypeError(MP_ERROR_TEXT("Expected integers for quantization params"));
+        m0 = mp_obj_get_int(m0_obj);
+        shift = mp_obj_get_int(shift_obj);
+        in_zp = mp_obj_get_int(in_zp_obj);
+        out_zp = mp_obj_get_int(out_zp_obj);
     }
     else{
+        if(!mp_obj_is_int(args[1]))
+            mp_raise_TypeError(MP_ERROR_TEXT("Expected integer kernel size"));
         kernel = mp_obj_get_int(args[1]);
+        m0_obj = mp_obj_subscr(args[2], MP_OBJ_NEW_SMALL_INT(0), MP_OBJ_SENTINEL);
+        shift_obj = mp_obj_subscr(args[2], MP_OBJ_NEW_SMALL_INT(1), MP_OBJ_SENTINEL);
+        in_zp_obj = mp_obj_subscr(args[2], MP_OBJ_NEW_SMALL_INT(2), MP_OBJ_SENTINEL);
+        out_zp_obj = mp_obj_subscr(args[2], MP_OBJ_NEW_SMALL_INT(3), MP_OBJ_SENTINEL);
+        if(!(mp_obj_is_int(m0_obj) && mp_obj_is_int(shift_obj) && mp_obj_is_int(in_zp_obj) && mp_obj_is_int(out_zp_obj)))
+            mp_raise_TypeError(MP_ERROR_TEXT("Expected integers for quantization params"));
+        m0 = mp_obj_get_int(m0_obj);
+        shift = mp_obj_get_int(shift_obj);
+        in_zp = mp_obj_get_int(in_zp_obj);
+        out_zp = mp_obj_get_int(out_zp_obj);
     }
     // extract shape from arr_pt
     size_t result_shape[3]; // Batch, channels, time-points
@@ -108,10 +147,6 @@ mp_obj_t maxpool1d(size_t n_args, const mp_obj_t *args){
 
     ndarray_obj_t *out_arr_pt = ndarray_new_dense_ndarray(3, result_shape, arr_pt->dtype);
     switch(arr_pt->dtype){
-        case NDARRAY_FLOAT: {
-            MAXPOOL1D_LOOP(float)
-            break;
-        }
         case NDARRAY_INT16: {
             MAXPOOL1D_LOOP(int16_t)
             break;
@@ -135,16 +170,63 @@ mp_obj_t maxpool1d(size_t n_args, const mp_obj_t *args){
     }
     return MP_OBJ_FROM_PTR(out_arr_pt);
 }
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(qmaxpool1d_obj, 2, 3, qmaxpool1d);
+
+mp_obj_t maxpool1d(size_t n_args, const mp_obj_t *args){
+    // preconditions ensuring valid ndarray input
+    mp_obj_t x = args[0];
+    if(!mp_obj_is_type(x, &ulab_ndarray_type)){
+        mp_raise_TypeError(MP_ERROR_TEXT("Expected ndarray as first argument"));
+    }
+    ndarray_obj_t *arr_pt = MP_OBJ_TO_PTR(x);
+    if(arr_pt->ndim != 3) mp_raise_ValueError(MP_ERROR_TEXT("Expected 3D array of form (batch, channels, time steps)"));
+
+    //preconditions to ensure valid kernel input
+    int32_t kernel = 2;
+    if(n_args == 2 && !mp_obj_is_int(args[1])){
+        mp_raise_TypeError(MP_ERROR_TEXT("Expected integer kernel size"));
+    }
+    else if(n_args == 2){
+        kernel = mp_obj_get_int(args[1]);
+    }
+    // extract shape from arr_pt
+    size_t result_shape[3]; // Batch, channels, time-points
+    result_shape[0] = (arr_pt->shape)[0];
+    result_shape[1] = (arr_pt->shape)[1];
+    if(kernel <= 0 || (size_t)kernel > (arr_pt->shape)[2]) mp_raise_ValueError(MP_ERROR_TEXT("Expected 0 < kernel size <= dim 2"));
+    result_shape[2] = (arr_pt->shape)[2] / kernel;
+
+    ndarray_obj_t *out_arr_pt = ndarray_new_dense_ndarray(3, result_shape, arr_pt->dtype);
+    float *arr = (float *) arr_pt->array;
+    float *out_arr = (float *) out_arr_pt->array;
+    float max = MIN_FOR_TYPE(float);
+    uint32_t ref = 0;
+    for(uint32_t i = 0; i < (arr_pt->len); i++){
+        if(arr[i] > max) max = arr[i];
+        if((i+1-ref) % kernel == 0){
+            out_arr[(i-ref)/kernel] = max;
+            max = MIN_FOR_TYPE(float);
+        }
+        if((i+1-ref) % (result_shape[2] * kernel) == 0){
+            ref += (uint32_t)((arr_pt->shape)[2] - result_shape[2] * kernel);
+            i += (uint32_t)((arr_pt->shape)[2] - result_shape[2] * kernel);
+        }
+    }
+    return MP_OBJ_FROM_PTR(out_arr_pt);
+}
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(maxpool1d_obj, 1, 2, maxpool1d);
 
 
-static inline int32_t requantize(int32_t accum, int32_t multiplier, uint8_t shift, int32_t zero_pt){
+static inline int32_t requantize(int32_t accum, int32_t multiplier, int8_t shift, int32_t zero_pt){
     int64_t product = (int64_t)accum * (int64_t)multiplier;
-    if(product >= 0)
+    if(product >= 0){
         product += ((int64_t)1 << (30 + shift));
-    else
-        product = -(-product + ((int64_t)1 << (30 + shift)));
-    product >>= (31 + shift);
+        product >>= (31 + shift);
+    }
+    else{
+        product = -product + ((int64_t) 1 << (30 + shift));
+        product = -(product >> (31 + shift));
+    }
     return (int32_t)product + zero_pt; // saturating cast into lower precision range is calling function's responsibility
 }
 #define CONVBODY(type) \
@@ -173,7 +255,6 @@ static inline int32_t requantize(int32_t accum, int32_t multiplier, uint8_t shif
                 dot_prod = requantize(dot_prod, m0, shift, output_zp); \
                 dot_prod = dot_prod < output_zp ? output_zp : dot_prod; /*applying relu activation*/      \
                 dot_prod = dot_prod > MAX_FOR_TYPE(type) ? MAX_FOR_TYPE(type) : dot_prod; \
-                dot_prod = dot_prod < MIN_FOR_TYPE(type) ? MIN_FOR_TYPE(type) : dot_prod;            \
                 result_arr[result_index + n] = (type)dot_prod;           \
             }                        \
         } \
@@ -191,12 +272,10 @@ static inline int32_t requantize(int32_t accum, int32_t multiplier, uint8_t shif
             }    put a \ here if you paste it back */
 mp_obj_t qconvrelu1d(size_t n_args, const mp_obj_t *args){
     ndarray_obj_t *bias_pt = NULL;
-    mp_obj_t m0_obj;
-    mp_obj_t shift_obj;
-    mp_obj_t output_zp_obj;
+    mp_obj_t m0_obj, shift_obj, output_zp_obj;
     int32_t m0 = 1;
     int32_t output_zp = 0;
-    uint8_t shift = 0;
+    int8_t shift = 0;
 
     if(!mp_obj_is_type(args[0], &ulab_ndarray_type) || !mp_obj_is_type(args[1], &ulab_ndarray_type))
         mp_raise_TypeError(MP_ERROR_TEXT("Expected ndarrays for input and kernel arguments"));
